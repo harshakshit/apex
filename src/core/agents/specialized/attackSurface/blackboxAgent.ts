@@ -152,6 +152,7 @@ function buildPrompt(target: string, session: SessionInfo): string {
   const scopeConstraints = session.config?.scopeConstraints;
   const authenticationInstructions = session.config?.authenticationInstructions;
   const enumerateSubdomains = session.config?.enumerateSubdomains ?? false;
+  const operatorPrompt = session.config?.prompt;
 
   const cm = session.credentialManager;
   const credBlock = cm?.formatForPrompt();
@@ -211,6 +212,10 @@ Note any login pages you find as assets and flag them for pentest agents.`;
       ? `Begin NOW by logging in. Your first tool call must be browser_navigate to ${loginTarget}. After login, continue with the remaining phases.`
       : `Begin attack surface analysis now. Follow the phases defined in your system prompt in order.`;
 
+  const operatorGuidanceBlock = operatorPrompt
+    ? `\n## Operator Guidance\n${operatorPrompt}\n`
+    : "";
+
   return `TARGET: ${target}
 
 Session: ${session.id}
@@ -222,6 +227,6 @@ SCOPE:
 ${scopeRules}
 
 ${subdomainBlock}
-
+${operatorGuidanceBlock}
 ${startDirective}`;
 }

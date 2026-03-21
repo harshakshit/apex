@@ -79,7 +79,7 @@ This ends the agent run — make sure all data is included.`,
 
     super({
       system: WHITEBOX_ATTACK_SURFACE_SYSTEM_PROMPT,
-      prompt: buildPrompt(codebasePath),
+      prompt: buildPrompt(codebasePath, session.config?.prompt),
       model,
       session,
       authConfig,
@@ -132,12 +132,16 @@ This ends the agent run — make sure all data is included.`,
 // Prompt builder
 // ---------------------------------------------------------------------------
 
-function buildPrompt(codebasePath: string): string {
+function buildPrompt(codebasePath: string, operatorPrompt?: string): string {
+  const operatorGuidanceBlock = operatorPrompt
+    ? `\n## Operator Guidance\n${operatorPrompt}\n`
+    : "";
+
   return `# Whitebox Attack Surface Analysis
 
 ## Codebase
 - **Path:** ${codebasePath}
-
+${operatorGuidanceBlock}
 ## Task
 Analyze this codebase and produce a complete attack surface map:
 1. Identify the repo type and package manager

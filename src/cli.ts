@@ -11,6 +11,10 @@ import packageJson from "../package.json";
 import { getCurrentVersion, upgrade } from "./core/installation";
 import { buildAuthConfig } from "./core/ai/utils";
 import { resolvePentestMode } from "./core/cli/pentestMode";
+import {
+  resolveFlagValue,
+  resolveThreatModelPrompt,
+} from "./tui/utils/command-flags";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -69,10 +73,12 @@ Usage:
   pensar version                      Show version number
 
 pentest options:
-  --target <url>     (required) Target URL / domain / IP
-  --cwd <path>       Source code path — enables whitebox attack surface
-  --mode <mode>      Pentest mode: exfil (pivoting & flag extraction)
-  --model <model>    AI model (default: claude-sonnet-4-5)
+  --target <url>           (required) Target URL / domain / IP
+  --cwd <path>             Source code path — enables whitebox attack surface
+  --mode <mode>            Pentest mode: exfil (pivoting & flag extraction)
+  --model <model>          AI model (default: claude-sonnet-4-5)
+  --prompt <text|@file>    Guidance for the pentest agent (inline text or @filepath)
+  --threat-model <text|@file>  Threat model to guide the pentest (inline or @filepath)
 
 targeted-pentest options:
   --target <url>          (required) Target URL / domain / IP
@@ -106,6 +112,15 @@ async function runPentest() {
   const target = getArgRequired("--target");
   const cwd = getArg("--cwd");
   const mode = getArg("--mode");
+  const promptRaw = getArg("--prompt");
+  const threatModelRaw = getArg("--threat-model");
+
+  // Resolve and combine threat model + prompt
+  const promptParts: string[] = [];
+  if (threatModelRaw)
+    promptParts.push(resolveThreatModelPrompt(threatModelRaw));
+  if (promptRaw) promptParts.push(resolveFlagValue(promptRaw));
+  const prompt = promptParts.length > 0 ? promptParts.join("\n\n") : undefined;
 
   const pensarConfig = await appConfig.get();
   const dynamicDefault =
@@ -131,6 +146,7 @@ Model:   ${model}
     config: {
       ...(cwd ? { cwd } : {}),
       ...(exfilMode ? { exfilMode: true } : {}),
+      ...(prompt ? { prompt } : {}),
     },
   });
 

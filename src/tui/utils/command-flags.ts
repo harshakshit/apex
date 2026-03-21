@@ -5,9 +5,48 @@
  * Supports: --flag value, --flag=value, --boolean-flag
  */
 
+import { readFileSync } from "fs";
+import { resolve, isAbsolute } from "path";
 import type { SessionConfig } from "../../core/session";
 import type { OperatorMode } from "../../core/operator";
 import { createToolsetState } from "../../core/toolset";
+import { wrapThreatModelContent } from "../../core/utils/prompt";
+
+// ============================================================================
+// Value Resolution
+// ============================================================================
+
+/**
+ * Resolve a flag value that may be an inline string or a file reference.
+ *
+ * If `value` starts with `@`, the remainder is treated as a file path:
+ * - Absolute paths are used as-is
+ * - Relative paths are resolved against `process.cwd()`
+ * - The file contents are returned as a UTF-8 string
+ *
+ * Otherwise the value is returned as-is.
+ */
+export function resolveFlagValue(value: string): string {
+  if (value.startsWith("@")) {
+    const filePath = value.slice(1);
+    const resolved = isAbsolute(filePath)
+      ? filePath
+      : resolve(process.cwd(), filePath);
+    return readFileSync(resolved, "utf-8");
+  }
+  return value;
+}
+
+/**
+ * Resolve a threat model value and wrap it with a usage preamble.
+ *
+ * Uses `resolveFlagValue()` for `@file` support, then wraps the content
+ * with instructions on how the pentest agent should use the threat model.
+ */
+export function resolveThreatModelPrompt(value: string): string {
+  const content = resolveFlagValue(value);
+  return wrapThreatModelContent(content);
+}
 
 // ============================================================================
 // General Flag Parsing
@@ -142,6 +181,12 @@ export interface WebCommandFlags {
 
   // Sandbox option
   sandbox?: boolean;
+
+  // Prompt option
+  prompt?: string;
+
+  // Threat model option
+  threatModel?: string;
 }
 
 /**
@@ -168,6 +213,8 @@ const webFlagSchema: FlagSchema = {
   // Legacy --auto flag maps to --swarm
   auto: { type: "boolean" },
   sandbox: { type: "boolean" },
+  prompt: { type: "string" },
+  "threat-model": { type: "string" },
 };
 
 /**
@@ -246,6 +293,13 @@ export function parseWebFlags(args: string[]): WebCommandFlags {
 
   // Sandbox option
   if (raw.sandbox) flags.sandbox = true;
+
+  // Prompt option — resolve @file references
+  if (raw.prompt) flags.prompt = resolveFlagValue(String(raw.prompt));
+
+  // Threat model option — resolve @file references and wrap with preamble
+  if (raw.threatModel)
+    flags.threatModel = resolveThreatModelPrompt(String(raw.threatModel));
 
   return flags;
 }
@@ -329,6 +383,14 @@ export function buildOperatorSessionConfig(
 
   sessionConfig.agentCwd = flags.sandbox ? undefined : process.cwd();
 
+  // Combine threat model and prompt into a single prompt field
+  const promptParts: string[] = [];
+  if (flags.threatModel) promptParts.push(flags.threatModel);
+  if (flags.prompt) promptParts.push(flags.prompt);
+  if (promptParts.length > 0) {
+    sessionConfig.prompt = promptParts.join("\n\n");
+  }
+
   return {
     targets: flags.target ? [flags.target] : [],
     name: flags.name || undefined,
@@ -372,6 +434,14 @@ export function buildSwarmSessionConfig(
       mode: flags.headersMode,
       headers: flags.headersMode === "custom" ? flags.customHeaders : undefined,
     };
+  }
+
+  // Combine threat model and prompt into a single prompt field
+  const promptParts: string[] = [];
+  if (flags.threatModel) promptParts.push(flags.threatModel);
+  if (flags.prompt) promptParts.push(flags.prompt);
+  if (promptParts.length > 0) {
+    sessionConfig.prompt = promptParts.join("\n\n");
   }
 
   return {
