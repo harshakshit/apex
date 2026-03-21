@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 import { mkdtempSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
