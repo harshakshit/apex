@@ -37,6 +37,7 @@ export type AgentEventMap = {
     subagentId: string;
     name?: string;
     input: unknown;
+    parentSubagentId?: string;
   };
   "subagent-complete": {
     subagentId: string;

@@ -108,4 +108,7 @@ export type ToolContext = {
    * plan agents to write plans scoped to their corresponding execution agent.
    */
   planSubagentId?: string;
+
+  /** The owning agent's subagent ID, used to prefix child subagent IDs. */
+  subagentId?: string;
 };

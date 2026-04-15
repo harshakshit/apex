@@ -19,17 +19,48 @@ const CHILD_BUS_EVENT_KEYS = [
   "step-finish",
 ] as const satisfies readonly (keyof AgentEventMap)[];
 
+/**
+ * Keys whose payloads carry an optional `subagentId` that should be
+ * prefixed with the parent agent's ID to create a hierarchical namespace.
+ */
+const PREFIXABLE_EVENT_KEYS = new Set<string>([
+  "text-delta",
+  "tool-call-start",
+  "tool-call-delta",
+  "tool-call-complete",
+  "tool-result",
+  "subagent-spawn",
+  "subagent-complete",
+  "command-output",
+  "error",
+  "step-finish",
+]);
+
 function attachChildEventBus(
   localBus: AgentEventBus,
   parentBus: AgentEventBus | undefined,
   accumulateText: (chunk: string) => void,
+  parentSubagentId?: string,
 ): void {
   for (const key of CHILD_BUS_EVENT_KEYS) {
     localBus.on(key, (payload: AgentEventMap[typeof key]) => {
       if (key === "text-delta") {
         accumulateText((payload as AgentEventMap["text-delta"]).text);
       }
-      parentBus?.emit(key, payload);
+
+      let forwarded = payload;
+      if (
+        parentSubagentId &&
+        PREFIXABLE_EVENT_KEYS.has(key) &&
+        typeof (payload as Record<string, unknown>).subagentId === "string"
+      ) {
+        forwarded = {
+          ...payload,
+          subagentId: `${parentSubagentId}/${(payload as Record<string, unknown>).subagentId}`,
+        };
+      }
+
+      parentBus?.emit(key, forwarded);
     });
   }
 }
@@ -184,19 +215,23 @@ async function runSingleCodingAgent(
   // codeAgent → offensiveSecurityAgent → tools/index → spawnCodingAgent → codeAgent
   const { CodeAgent } = await import("../../specialized/codeAgent/agent");
 
-  const subagentId = `coding-agent-${agentIndex}`;
+  const localId = `coding-agent-${agentIndex}`;
+  const subagentId = ctx.subagentId
+    ? `${ctx.subagentId}/${localId}`
+    : localId;
 
   ctx.eventBus?.emit("subagent-spawn", {
     subagentId,
     name,
     input: { codebasePath, objective },
+    parentSubagentId: ctx.subagentId,
   });
 
   const localBus = new AgentEventBus();
   let textOutput = "";
   attachChildEventBus(localBus, ctx.eventBus, (t) => {
     textOutput += t;
-  });
+  }, ctx.subagentId);
 
   const agent = new CodeAgent({
     codebasePath,
@@ -206,7 +241,7 @@ async function runSingleCodingAgent(
     authConfig: ctx.authConfig,
     abortSignal: ctx.abortSignal,
     eventBus: localBus,
-    subagentId,
+    subagentId: localId,
     enableThinking: ctx.enableThinking,
   });
 
