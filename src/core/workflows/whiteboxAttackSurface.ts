@@ -376,10 +376,23 @@ export async function runWhiteboxAttackSurfaceWorkflow(
     appTaskDoneCount.set(app.name, { done: 0, total: 1 });
   }
 
+  // Emit app-level parent subagents so per-type children can be nested
+  const emittedAppSubagents = new Set<string>();
+  for (const app of appsResult.apps) {
+    const appSubagentId = `app-${app.name}`;
+    emittedAppSubagents.add(appSubagentId);
+    eventBus?.emit("subagent-spawn", {
+      subagentId: appSubagentId,
+      name: app.name,
+      input: { app: app.name, type: app.type, framework: app.framework },
+    });
+  }
+
   await runWithBoundedConcurrency(
     tasks,
     DEFAULT_CONCURRENCY,
     async (task, _index) => {
+      const parentSubagentId = `app-${task.appInfo.name}`;
       const subagentId = `${task.type}-${task.appInfo.name}`;
 
       console.log(
@@ -390,6 +403,7 @@ export async function runWhiteboxAttackSurfaceWorkflow(
         subagentId,
         name: task.appInfo.name,
         input: { app: task.appInfo.name, type: task.type },
+        parentSubagentId,
       });
 
       const objective =
@@ -449,6 +463,16 @@ export async function runWhiteboxAttackSurfaceWorkflow(
         counter.done++;
         if (counter.done >= counter.total) {
           completedAppCount++;
+
+          // Complete the app-level parent subagent
+          const appSubagentId = `app-${task.appInfo.name}`;
+          if (emittedAppSubagents.has(appSubagentId)) {
+            eventBus?.emit("subagent-complete", {
+              subagentId: appSubagentId,
+              status: "completed",
+            });
+          }
+
           eventBus?.emit("app-analysis-progress", {
             totalApps,
             completedApps: completedAppCount,
