@@ -7,7 +7,11 @@ import {
   type ReactNode,
 } from "react";
 import { useKeyboard } from "@opentui/react";
-import { ScrollBoxRenderable } from "@opentui/core";
+import {
+  ScrollBoxRenderable,
+  decodePasteBytes,
+  stripAnsiSequences,
+} from "@opentui/core";
 import { modelSupportsThinking, type ModelInfo } from "../../../core/ai";
 import { getAvailableModels } from "../../../core/providers/utils";
 import type { Config } from "../../../core/config/config";
@@ -548,10 +552,9 @@ export function ModelPicker({
                         setLocalUrl(typeof v === "string" ? v : "")
                       }
                       onPaste={(event) => {
-                        const cleaned = String(event.text).replace(
-                          /\r?\n/g,
-                          "",
-                        );
+                        const cleaned = stripAnsiSequences(
+                          decodePasteBytes(event.bytes),
+                        ).replace(/\r?\n/g, "");
                         setLocalUrl((prev) => `${prev}${cleaned}`);
                       }}
                       onSubmit={finishEditing}
@@ -592,10 +595,9 @@ export function ModelPicker({
                         setLocalModelName(typeof v === "string" ? v : "")
                       }
                       onPaste={(event) => {
-                        const cleaned = String(event.text).replace(
-                          /\r?\n/g,
-                          "",
-                        );
+                        const cleaned = stripAnsiSequences(
+                          decodePasteBytes(event.bytes),
+                        ).replace(/\r?\n/g, "");
                         setLocalModelName((prev) => `${prev}${cleaned}`);
                       }}
                       onSubmit={finishEditing}

@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useKeyboard } from "@opentui/react";
-import { ScrollBoxRenderable } from "@opentui/core";
+import {
+  ScrollBoxRenderable,
+  decodePasteBytes,
+  stripAnsiSequences,
+} from "@opentui/core";
 import Input from "../input";
 import { useConfig } from "../../context/config";
 import { useAgent } from "../../context/agent";
@@ -594,7 +598,9 @@ export default function WebWizard({
                 setState((prev) => ({ ...prev, target: v }));
               }}
               onPaste={(event) => {
-                const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                const cleaned = stripAnsiSequences(
+                  decodePasteBytes(event.bytes),
+                ).replace(/\r?\n/g, " ");
                 setTargetError(null);
                 setState((prev) => ({
                   ...prev,
@@ -662,7 +668,9 @@ export default function WebWizard({
                   value={state.prompt}
                   onInput={(v) => setState((prev) => ({ ...prev, prompt: v }))}
                   onPaste={(event) => {
-                    const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                    const cleaned = stripAnsiSequences(
+                      decodePasteBytes(event.bytes),
+                    ).replace(/\r?\n/g, " ");
                     setState((prev) => ({
                       ...prev,
                       prompt: prev.prompt + cleaned,
@@ -685,7 +693,9 @@ export default function WebWizard({
                   }}
                   onPaste={(event) => {
                     setThreatModelPreWrapped(false);
-                    const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                    const cleaned = stripAnsiSequences(
+                      decodePasteBytes(event.bytes),
+                    ).replace(/\r?\n/g, " ");
                     setState((prev) => ({
                       ...prev,
                       threatModel: prev.threatModel + cleaned,
@@ -710,7 +720,9 @@ export default function WebWizard({
                     }))
                   }
                   onPaste={(event) => {
-                    const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                    const cleaned = stripAnsiSequences(
+                      decodePasteBytes(event.bytes),
+                    ).replace(/\r?\n/g, " ");
                     setState((prev) => ({
                       ...prev,
                       auth: {
@@ -734,7 +746,9 @@ export default function WebWizard({
                     }))
                   }
                   onPaste={(event) => {
-                    const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                    const cleaned = stripAnsiSequences(
+                      decodePasteBytes(event.bytes),
+                    ).replace(/\r?\n/g, " ");
                     setState((prev) => ({
                       ...prev,
                       auth: {
@@ -758,7 +772,9 @@ export default function WebWizard({
                     }))
                   }
                   onPaste={(event) => {
-                    const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                    const cleaned = stripAnsiSequences(
+                      decodePasteBytes(event.bytes),
+                    ).replace(/\r?\n/g, " ");
                     setState((prev) => ({
                       ...prev,
                       auth: {
@@ -782,7 +798,9 @@ export default function WebWizard({
                     }))
                   }
                   onPaste={(event) => {
-                    const cleaned = String(event.text).replace(/\r?\n/g, " ");
+                    const cleaned = stripAnsiSequences(
+                      decodePasteBytes(event.bytes),
+                    ).replace(/\r?\n/g, " ");
                     setState((prev) => ({
                       ...prev,
                       auth: {

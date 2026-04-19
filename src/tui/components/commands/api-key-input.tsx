@@ -1,4 +1,5 @@
 import { useKeyboard } from "@opentui/react";
+import { decodePasteBytes, stripAnsiSequences } from "@opentui/core";
 import { useState } from "react";
 import Input from "../input";
 import { type ProviderType, verifyApiKey } from "../../../core/providers";
@@ -92,8 +93,8 @@ export default function APIKeyInput({
               setApiKey(typeof value === "string" ? value : "")
             }
             onPaste={(event) => {
-              const cleaned = String(event.text);
-              setApiKey((prev) => `${prev}${cleaned}`);
+              const text = stripAnsiSequences(decodePasteBytes(event.bytes));
+              setApiKey((prev) => `${prev}${text}`);
             }}
             onSubmit={handleSubmit}
           />
